@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シフト管理（管理者）</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f4f0;
+  --white: #fff;
+  --border: #e0ddd6;
+  --text: #1a1a1a;
+  --muted: #888;
+  --early: #2563eb; --early-bg: #dbeafe;
+  --mid: #15803d;   --mid-bg: #dcfce7;
+  --late: #c2410c;  --late-bg: #ffedd5;
+  --off: #7c3aed;   --off-bg: #ede9fe;
+  --paid: #be185d;  --paid-bg: #fce7f3;
+  --r: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; min-height: 100vh; }
+
+header {
+  background: var(--white); border-bottom: 1px solid var(--border);
+  padding: 13px 24px; display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 200;
+}
+.logo { background: #1a1a1a; color: #fff; width: 32px; height: 32px; border-radius: 7px; display: grid; place-items: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+header h1 { font-size: 15px; font-weight: 700; flex: 1; }
+#hdr-mo { font-size: 12px; color: var(--muted); }
+
+.tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--white); padding: 0 20px; overflow-x: auto; }
+.tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 10px 16px; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; cursor: pointer; color: var(--muted); white-space: nowrap; transition: color .2s, border-color .2s; }
+.tab:hover { color: var(--text); }
+.tab.active { color: #1a1a1a; border-bottom-color: #1a1a1a; font-weight: 500; }
+
+main { padding: 18px 20px 60px; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+.card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; }
+
+.ctrl-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.f label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; }
+.f input, .f select {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 8px 11px; font-size: 13px; font-family: 'Noto Sans JP', sans-serif; color: var(--text); outline: none;
+}
+.btn { border-radius: var(--r); padding: 8px 16px; font-size: 13px; font-family: 'Noto Sans JP', sans-serif; cursor: pointer; border: 1px solid var(--border); background: var(--white); color: var(--text); transition: background .15s; white-space: nowrap; }
+.btn:hover { background: var(--bg); }
+.btn-dark { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+.btn-dark:hover { background: #333; }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-red { color: #dc2626; border-color: #fca5a5; }
+.btn-red:hover { background: #fff5f5; }
+
+/* シフト表 */
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+th, td { border: 1px solid var(--border); }
+th { background: var(--bg); font-weight: 500; font-size: 11px; color: var(--muted); padding: 5px 7px; text-align: center; }
+.th-sun { color: #dc2626 !important; }
+.th-sat { color: var(--early) !important; }
+.th-hol { background: #fdf4f4 !important; }
+.nc { padding: 0 9px; min-width: 72px; font-weight: 500; font-size: 12px; }
+.rb { font-size: 9px; color: var(--muted); display: block; font-weight: 400; }
+
+.sc {
+  width: 42px; min-width: 42px; height: 36px; cursor: pointer;
+  transition: filter .1s; vertical-align: middle; position: relative; text-align: center;
+}
+.sc:hover { filter: brightness(.92); }
+.sc[data-c="early"] { background: var(--early-bg); }
+.sc[data-c="mid"]   { background: var(--mid-bg); }
+.sc[data-c="late"]  { background: var(--late-bg); }
+.sc[data-c="off"]   { background: var(--off-bg); }
+.sc[data-c="paid"]  { background: var(--paid-bg); }
+.sc-lbl { font-size: 11px; font-weight: 700; line-height: 36px; }
+.cc-early { color: var(--early); } .cc-mid { color: var(--mid); }
+.cc-late  { color: var(--late);  } .cc-off { color: var(--off); }
+.cc-paid  { color: var(--paid);  }
+.wish-dot { width: 5px; height: 5px; border-radius: 50%; position: absolute; top: 2px; right: 2px; }
+
+.cnt-row td { background: #f8f7f3; font-size: 10px; text-align: center; padding: 3px 2px; color: var(--muted); }
+
+/* stats */
+.stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px; }
+.sc2 { background: var(--white); border: 1px solid var(--border); border-radius: var(--r); padding: 10px 12px; }
+.sc2 .n { font-size: 22px; font-weight: 700; }
+.sc2 .l { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* ctx menu */
+.ctx { position: fixed; background: var(--white); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,.1); z-index: 500; min-width: 140px; display: none; overflow: hidden; }
+.ci { padding: 10px 14px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background .1s; }
+.ci:hover { background: var(--bg); }
+.cd { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+/* staff */
+.s-list { display: flex; flex-direction: column; gap: 6px; }
+.s-item { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: var(--bg); border-radius: var(--r); flex-wrap: wrap; }
+.s-name { flex: 1; font-size: 14px; font-weight: 500; min-width: 80px; }
+.s-role { font-size: 11px; color: var(--muted); background: var(--white); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; }
+.s-item input { background: var(--white); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 13px; font-family: 'Noto Sans JP', sans-serif; color: var(--text); outline: none; width: 100px; }
+
+.note-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--r); padding: 8px 12px; font-size: 12px; color: #92400e; margin-top: 6px; }
+.empty-msg { color: var(--muted); font-size: 13px; text-align: center; padding: 32px 0; }
+.loading-msg { color: var(--muted); font-size: 13px; text-align: center; padding: 32px 0; }
+
+.toast { position: fixed; bottom: 18px; right: 18px; background: #1a1a1a; color: #fff; border-radius: 8px; padding: 10px 16px; font-size: 12px; opacity: 0; transform: translateY(8px); transition: all .3s; pointer-events: none; z-index: 999; }
+.toast.show { opacity: 1; transform: translateY(0); }
+
+@media (max-width: 600px) { main { padding: 12px 10px 60px; } .stats { grid-template-columns: repeat(3,1fr); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">MGR</div>
+  <h1>シフト管理</h1>
+  <span id="hdr-mo">─</span>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="sw('confirm')">確定シフト</button>
+  <button class="tab" onclick="sw('wish')">希望一覧</button>
+  <button class="tab" onclick="sw('staff')">スタッフ管理</button>
+</div>
+
+<main>
+
+<!-- 確定シフト -->
+<div class="panel active" id="panel-confirm">
+  <div class="card">
+    <div class="ctrl-row">
+      <div class="f"><label>対象月</label><input type="month" id="cm" onchange="renderConfirm()" /></div>
+      <button class="btn" onclick="loadAndApplyWishes()">希望を取得して反映</button>
+      <button class="btn btn-dark" onclick="expCSV()">CSV出力</button>
+    </div>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="card"><div class="tbl-wrap"><table id="ctbl"></table></div></div>
+  <div id="notes"></div>
+</div>
+
+<!-- 希望一覧 -->
+<div class="panel" id="panel-wish">
+  <div class="card">
+    <div class="ctrl-row">
+      <div class="f"><label>対象月</label><input type="month" id="wm" onchange="renderWish()" /></div>
+      <button class="btn" onclick="renderWish()">最新データを取得</button>
+    </div>
+  </div>
+  <div id="wish-area"><div class="loading-msg">対象月を選択してください</div></div>
+</div>
+
+<!-- スタッフ管理 -->
+<div class="panel" id="panel-staff">
+  <div class="card">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;font-weight:500;text-transform:uppercase;letter-spacing:.08em">スタッフ一覧</div>
+    <div class="s-list" id="slist"></div>
+    <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:500;text-transform:uppercase;letter-spacing:.08em">新規追加</div>
+      <div class="ctrl-row">
+        <div class="f"><label>氏名</label><input type="text" id="nn" placeholder="氏名" style="width:110px" /></div>
+        <div class="f"><label>役職</label>
+          <select id="nr">
+            <option value="SM">SM ストアマネージャー</option>
+            <option value="AM">AM アシスタントマネージャー</option>
+            <option value="ST" selected>ST スタッフ</option>
+            <option value="CR">CR クルー</option>
+          </select>
+        </div>
+        <div class="f"><label>社員番号</label><input type="text" id="ne" placeholder="社員番号" style="width:110px" /></div>
+        <button class="btn btn-dark" onclick="addStaff()" style="align-self:flex-end">追加</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<div class="ctx" id="ctx">
+  <div class="ci" onclick="setC('early')"><span class="cd" style="background:var(--early)"></span>早番</div>
+  <div class="ci" onclick="setC('mid')"><span class="cd" style="background:var(--mid)"></span>中番</div>
+  <div class="ci" onclick="setC('late')"><span class="cd" style="background:var(--late)"></span>遅番</div>
+  <div class="ci" onclick="setC('off')"><span class="cd" style="background:var(--off)"></span>公休</div>
+  <div class="ci" onclick="setC('paid')"><span class="cd" style="background:var(--paid)"></span>有給</div>
+  <div class="ci" onclick="setC(null)" style="border-top:1px solid var(--border)"><span class="cd" style="background:#ccc"></span>クリア</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzfQB_gjtjr5OaHa45baZ5hXbglLId-zpKuihB4PoBIfEK8rYxhjl6urLQJQ2DWYC29/exec';
+const STAFF_KEY = 'shift_v5_staff';
+const CONF_KEY  = 'shift_v5_confirmed';
+
+const DEFAULT_STAFF = [
+  {name:'川島達也',  role:'SM', empNo:''},
+  {name:'石川竜也',  role:'AM', empNo:''},
+  {name:'蛭田辰徳',  role:'AM', empNo:''},
+  {name:'落合裕哉',  role:'AM', empNo:''},
+  {name:'結城耕司',  role:'AM', empNo:''},
+  {name:'羽入田弘希',role:'AM', empNo:''},
+  {name:'佐藤和幸',  role:'ST', empNo:''},
+  {name:'稲崎美香',  role:'ST', empNo:''},
+  {name:'滝沢智子',  role:'ST', empNo:''},
+  {name:'冨田一也',  role:'ST', empNo:'7051360'},
+  {name:'小林啓泰',  role:'ST', empNo:''},
+  {name:'石澤紫苑',  role:'ST', empNo:''},
+  {name:'高橋虎雅',  role:'ST', empNo:''},
+  {name:'冨田 幸子', role:'ST', empNo:'923'},
+  {name:'冨田 和',   role:'ST', empNo:'130'},
+  {name:'冨田 英',   role:'ST', empNo:'1029'},
+];
+
+const TL = {early:'早',mid:'中',late:'遅',off:'休',paid:'有給'};
+const TC = {early:'var(--early)',mid:'var(--mid)',late:'var(--late)',off:'var(--off)',paid:'var(--paid)'};
+
+let ctxCell = null;
+let wishCache = {};
+
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function getStaff(){const s=localStorage.getItem(STAFF_KEY);if(s){try{return JSON.parse(s);}catch(e){}}localStorage.setItem(STAFF_KEY,JSON.stringify(DEFAULT_STAFF));return DEFAULT_STAFF;}
+function setStaff(a){localStorage.setItem(STAFF_KEY,JSON.stringify(a));}
+function getConf(){try{return JSON.parse(localStorage.getItem(CONF_KEY)||'{}');}catch(e){return{};}}
+function setConf(o){localStorage.setItem(CONF_KEY,JSON.stringify(o));}
+function ck(empNo,month,day){return `${empNo}||${month}||${day}`;}
+
+function sw(name){
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['confirm','wish','staff'][i]===name));
+  ['confirm','wish','staff'].forEach(n=>document.getElementById('panel-'+n).classList.toggle('active',n===name));
+  if(name==='staff')renderStaff();
+  if(name==='confirm')renderConfirm();
+}
+
+/* ── GASからデータ取得 ── */
+async function fetchWishes(month) {
+  try {
+    const res = await fetch(GAS_URL + '?t=' + Date.now());
+    const json = await res.json();
+    if(json.status !== 'ok') return {};
+    const result = {};
+    json.data.forEach(row => {
+      if(row.month !== month) return;
+      if(!result[row.empNo]) result[row.empNo] = { name:row.name, empNo:row.empNo, role:row.role, note:row.note, days:{} };
+      result[row.empNo].days[row.day] = row.shift;
+      if(row.note) result[row.empNo].note = row.note;
+    });
+    return result;
+  } catch(e) {
+    return {};
+  }
+}
+
+/* ── スタッフ管理 ── */
+function renderStaff(){
+  const staff=getStaff();
+  const list=document.getElementById('slist');
+  list.innerHTML='';
+  if(!staff.length){list.innerHTML='<p class="empty-msg">スタッフが登録されていません</p>';return;}
+  staff.forEach((s,i)=>{
+    const item=document.createElement('div');
+    item.className='s-item';
+    item.innerHTML=`
+      <span class="s-name">${s.name}</span>
+      <span class="s-role">${s.role}</span>
+      <input type="text" value="${s.empNo||''}" placeholder="社員番号" onchange="updateEmpNo(${i},this.value)" />
+      <button class="btn btn-sm btn-red" onclick="removeStaff(${i})">削除</button>`;
+    list.appendChild(item);
+  });
+}
+function updateEmpNo(i,v){const staff=getStaff();staff[i].empNo=v.trim();setStaff(staff);toast('社員番号を更新しました');}
+function addStaff(){
+  const name=document.getElementById('nn').value.trim();
+  const role=document.getElementById('nr').value;
+  const empNo=document.getElementById('ne').value.trim();
+  if(!name){toast('氏名を入力してください');return;}
+  const staff=getStaff();
+  if(staff.some(s=>s.name===name)){toast('すでに登録されています');return;}
+  staff.push({name,role,empNo});setStaff(staff);
+  document.getElementById('nn').value='';document.getElementById('ne').value='';
+  renderStaff();toast(`${name} を追加しました`);
+}
+function removeStaff(i){
+  const staff=getStaff();
+  if(!confirm(`「${staff[i].name}」を削除しますか？`))return;
+  staff.splice(i,1);setStaff(staff);renderStaff();
+}
+
+/* ── 希望一覧 ── */
+async function renderWish(){
+  const month=document.getElementById('wm').value;
+  if(!month)return;
+  const area=document.getElementById('wish-area');
+  area.innerHTML='<div class="loading-msg">データ取得中...</div>';
+
+  const wishes=await fetchWishes(month);
+  const[y,m]=month.split('-').map(Number);
+  const total=new Date(y,m,0).getDate();
+  const staff=getStaff();
+
+  let h='<div class="card"><div class="tbl-wrap"><table><thead><tr><th>氏名</th>';
+  for(let d=1;d<=total;d++){
+    const dow=new Date(y,m-1,d).getDay();
+    const cls=dow===0?'th-sun':dow===6?'th-sat':'';
+    h+=`<th class="${cls}">${d}<br><span style="font-size:9px;font-weight:400">${'日月火水木金土'[dow]}</span></th>`;
+  }
+  h+='<th>備考</th></tr></thead><tbody>';
+
+  staff.forEach(s=>{
+    const entry=wishes[s.empNo];
+    h+=`<tr><td class="nc">${s.name}<span class="rb">${s.role}</span></td>`;
+    for(let d=1;d<=total;d++){
+      const t=entry?.days?.[d];
+      if(t){
+        h+=`<td style="background:var(--${t}-bg);text-align:center;padding:4px 2px"><span style="font-size:11px;font-weight:700;color:var(--${t})">${TL[t]}</span></td>`;
+      } else {
+        h+=`<td></td>`;
+      }
+    }
+    h+=`<td style="font-size:11px;color:var(--muted);padding:3px 7px;min-width:80px">${entry?.note||''}</td></tr>`;
+  });
+  h+='</tbody></table></div></div>';
+  area.innerHTML=h;
+}
+
+/* ── 確定シフト ── */
+function renderConfirm(){
+  const month=document.getElementById('cm').value;
+  document.getElementById('hdr-mo').textContent=month||'─';
+  if(!month)return;
+  const[y,m]=month.split('-').map(Number);
+  const total=new Date(y,m,0).getDate();
+  const staff=getStaff();
+  const conf=getConf();
+
+  // stats
+  const cnt={early:0,mid:0,late:0,off:0,paid:0};
+  staff.forEach(s=>{for(let d=1;d<=total;d++){const t=conf[ck(s.empNo,month,d)];if(t&&cnt[t]!==undefined)cnt[t]++;}});
+  document.getElementById('stats').innerHTML=['early','mid','late','off','paid'].map(t=>
+    `<div class="sc2" style="border-left:3px solid ${TC[t]}"><div class="n" style="color:${TC[t]}">${cnt[t]}</div><div class="l">${TL[t]}</div></div>`
+  ).join('');
+
+  let h='<thead><tr><th rowspan="2" style="min-width:72px">氏名</th>';
+  for(let d=1;d<=total;d++){const dow=new Date(y,m-1,d).getDay();const cls=(dow===0?'th-sun':(dow===6?'th-sat':''))+(dow===0||dow===6?' th-hol':'');h+=`<th class="${cls}">${d}</th>`;}
+  h+='<th>計</th></tr><tr>';
+  for(let d=1;d<=total;d++){const dow=new Date(y,m-1,d).getDay();const cls=(dow===0?'th-sun':(dow===6?'th-sat':''))+(dow===0||dow===6?' th-hol':'');h+=`<th class="${cls}" style="font-weight:400;font-size:9px">${'日月火水木金土'[dow]}</th>`;}
+  h+='<th></th></tr></thead><tbody>';
+
+  // 出勤数
+  h+='<tr class="cnt-row"><td style="text-align:left;padding:3px 8px;font-size:10px">出勤数</td>';
+  for(let d=1;d<=total;d++){
+    let c=0;staff.forEach(s=>{const t=conf[ck(s.empNo,month,d)];if(t&&t!=='off'&&t!=='paid')c++;});
+    h+=`<td>${c||''}</td>`;
+  }
+  h+='<td></td></tr>';
+
+  staff.forEach(s=>{
+    let wd=0;
+    h+=`<tr><td class="nc">${s.name}<span class="rb">${s.role}</span></td>`;
+    for(let d=1;d<=total;d++){
+      const k=ck(s.empNo,month,d);
+      const ct=conf[k]||null;
+      const dow=new Date(y,m-1,d).getDay();
+      const hs=(dow===0||dow===6)?'style="background:#fafafa"':'';
+      if(ct&&ct!=='off'&&ct!=='paid')wd++;
+      h+=`<td class="sc" data-eno="${s.empNo}" data-day="${d}" data-mo="${month}" ${ct?`data-c="${ct}"`:''}  ${hs} onclick="openCtx(event,this)">
+        <span class="sc-lbl ${ct?'cc-'+ct:''}">${ct?TL[ct]:''}</span>
+      </td>`;
+    }
+    h+=`<td style="text-align:center;font-size:11px;padding:0 6px;color:var(--muted)">${wd||''}</td></tr>`;
+  });
+  h+='</tbody>';
+  document.getElementById('ctbl').innerHTML=h;
+  document.getElementById('notes').innerHTML='';
+}
+
+async function loadAndApplyWishes(){
+  const month=document.getElementById('cm').value;
+  if(!month){toast('対象月を選択してください');return;}
+  toast('データ取得中...');
+  const wishes=await fetchWishes(month);
+  const[y,m]=month.split('-').map(Number);
+  const total=new Date(y,m,0).getDate();
+  const staff=getStaff();
+  const conf=getConf();
+  let cnt=0;
+
+  // メモ表示
+  let nh='';
+  staff.forEach(s=>{
+    const entry=wishes[s.empNo];
+    if(!entry)return;
+    for(let d=1;d<=total;d++){
+      const k=ck(s.empNo,month,d);
+      if(!conf[k]&&entry.days[d]){conf[k]=entry.days[d];cnt++;}
+    }
+    if(entry.note)nh+=`<div class="note-box"><strong>${s.name}</strong>：${entry.note}</div>`;
+  });
+  setConf(conf);
+  renderConfirm();
+  document.getElementById('notes').innerHTML=nh?`<div class="card">${nh}</div>`:'';
+  toast(`${cnt}件の希望を反映しました`);
+}
+
+function openCtx(e,cell){
+  e.preventDefault();ctxCell=cell;
+  const menu=document.getElementById('ctx');
+  menu.style.display='block';
+  let x=e.clientX,y=e.clientY;
+  if(x+150>window.innerWidth)x=window.innerWidth-155;
+  if(y+230>window.innerHeight)y=window.innerHeight-235;
+  menu.style.left=x+'px';menu.style.top=y+'px';
+}
+document.addEventListener('click',e=>{if(!e.target.closest('#ctx'))document.getElementById('ctx').style.display='none';});
+
+function setC(type){
+  if(!ctxCell)return;
+  const{eno,day,mo}=ctxCell.dataset;
+  const conf=getConf();
+  const k=ck(eno,mo,day);
+  if(type===null)delete conf[k];else conf[k]=type;
+  setConf(conf);
+  document.getElementById('ctx').style.display='none';
+  renderConfirm();
+}
+
+function expCSV(){
+  const month=document.getElementById('cm').value;if(!month)return;
+  const[y,m]=month.split('-').map(Number);
+  const total=new Date(y,m,0).getDate();
+  const staff=getStaff();const conf=getConf();
+  let csv='\uFEFF氏名,役職,社員番号,'+Array.from({length:total},(_,i)=>i+1).join(',')+'\n';
+  staff.forEach(s=>{
+    const row=[s.name,s.role,s.empNo||''];
+    for(let d=1;d<=total;d++)row.push(TL[conf[ck(s.empNo,month,d)]]||'');
+    csv+=row.map(v=>`"${v}"`).join(',')+'\n';
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`確定シフト_${month}.csv`;a.click();
+  toast('CSVを出力しました');
+}
+
+const today=new Date();
+const dm=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+document.getElementById('cm').value=dm;
+document.getElementById('wm').value=dm;
+document.getElementById('hdr-mo').textContent=dm;
+renderConfirm();
+renderStaff();
+</script>
+</body>
+</html>
