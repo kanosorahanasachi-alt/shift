@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>シフト希望入力</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f4f0;
+  --white: #fff;
+  --border: #e0ddd6;
+  --text: #1a1a1a;
+  --muted: #999;
+  --early: #2563eb;
+  --early-bg: #dbeafe;
+  --mid: #15803d;
+  --mid-bg: #dcfce7;
+  --late: #c2410c;
+  --late-bg: #ffedd5;
+  --off: #7c3aed;
+  --off-bg: #ede9fe;
+  --paid: #be185d;
+  --paid-bg: #fce7f3;
+  --r: 14px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; min-height: 100vh; }
+
+header {
+  background: var(--white); border-bottom: 1px solid var(--border);
+  padding: 16px 20px; text-align: center;
+  position: sticky; top: 0; z-index: 100;
+}
+header h1 { font-size: 16px; font-weight: 700; }
+header p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.screen { display: none; }
+.screen.active { display: block; }
+
+.pin-screen { padding: 36px 24px 24px; display: flex; flex-direction: column; align-items: center; }
+.pin-screen h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.pin-screen > p { font-size: 13px; color: var(--muted); margin-bottom: 28px; text-align: center; line-height: 1.6; }
+
+.month-wrap { width: 100%; max-width: 300px; margin-bottom: 24px; }
+.month-wrap label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; }
+.month-wrap input {
+  width: 100%; background: var(--white); border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 14px 16px; font-size: 16px;
+  font-family: 'Noto Sans JP', sans-serif; color: var(--text); outline: none;
+}
+
+.pin-display { display: flex; gap: 8px; margin-bottom: 28px; min-height: 20px; }
+.pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border); background: none; transition: all .15s; }
+.pin-dot.filled { background: #1a1a1a; border-color: #1a1a1a; }
+
+.pin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 300px; }
+.pin-key {
+  background: var(--white); border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 18px 0;
+  font-size: 22px; font-weight: 500; text-align: center;
+  cursor: pointer; transition: background .1s, transform .1s;
+  color: var(--text); font-family: 'Noto Sans JP', sans-serif;
+}
+.pin-key:active { background: #e8e6e0; transform: scale(.93); }
+.pin-key.del { font-size: 18px; color: var(--muted); }
+.pin-key.blank { visibility: hidden; }
+.pin-error { color: #dc2626; font-size: 13px; margin-top: 14px; min-height: 18px; font-weight: 500; }
+.pin-hint { font-size: 11px; color: var(--muted); margin-top: 16px; text-align: center; }
+
+.cal-screen { padding: 14px 14px 0; }
+.cal-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.back-btn {
+  background: var(--white); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 9px 14px; font-size: 13px;
+  font-family: 'Noto Sans JP', sans-serif; cursor: pointer; color: var(--text); flex-shrink: 0;
+}
+.back-btn:active { background: #e8e6e0; }
+.cal-name { font-size: 16px; font-weight: 700; }
+.cal-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+.legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; }
+.s-btn {
+  border-radius: 10px; padding: 10px 4px; text-align: center;
+  cursor: pointer; border: 2px solid transparent;
+  transition: border-color .12s, transform .1s;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+.s-btn:active { transform: scale(.94); }
+.s-btn .sn { font-size: 14px; font-weight: 700; display: block; }
+.s-btn.sel { border-color: currentColor; }
+.se { background: var(--early-bg); color: var(--early); }
+.sm { background: var(--mid-bg); color: var(--mid); }
+.sl { background: var(--late-bg); color: var(--late); }
+.so { background: var(--off-bg); color: var(--off); }
+.sp { background: var(--paid-bg); color: var(--paid); }
+.sc { background: #eeecea; color: var(--muted); }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 12px; }
+.dh { text-align: center; font-size: 11px; color: var(--muted); padding: 4px 0; font-weight: 500; }
+.dh.sun { color: #dc2626; } .dh.sat { color: var(--early); }
+.dc {
+  border-radius: 7px; border: 1.5px solid var(--border); background: var(--white);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  aspect-ratio: 1; cursor: pointer; transition: transform .1s;
+}
+.dc:active { transform: scale(.88); }
+.dc.empty { border: none; background: none; cursor: default; }
+.dn { font-size: 13px; font-weight: 500; line-height: 1; }
+.dl { font-size: 8px; margin-top: 2px; font-weight: 700; }
+.dc.sun .dn { color: #dc2626; } .dc.sat .dn { color: var(--early); }
+.dc[data-t="early"] { background: var(--early-bg); border-color: var(--early); }
+.dc[data-t="early"] .dn { color: var(--early); }
+.dc[data-t="mid"] { background: var(--mid-bg); border-color: var(--mid); }
+.dc[data-t="mid"] .dn { color: var(--mid); }
+.dc[data-t="late"] { background: var(--late-bg); border-color: var(--late); }
+.dc[data-t="late"] .dn { color: var(--late); }
+.dc[data-t="off"] { background: var(--off-bg); border-color: var(--off); }
+.dc[data-t="off"] .dn { color: var(--off); }
+.dc[data-t="paid"] { background: var(--paid-bg); border-color: var(--paid); }
+.dc[data-t="paid"] .dn { color: var(--paid); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+.chip { border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 500; }
+
+.note-wrap { margin-bottom: 16px; }
+.note-wrap label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 5px; }
+.note-wrap textarea {
+  width: 100%; background: var(--white); border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 11px 13px; font-size: 14px;
+  font-family: 'Noto Sans JP', sans-serif; color: var(--text); outline: none; resize: none; min-height: 68px;
+}
+
+.save-btn {
+  width: 100%; background: #1a1a1a; color: #fff; border: none;
+  border-radius: var(--r); padding: 17px; font-size: 16px; font-weight: 700;
+  font-family: 'Noto Sans JP', sans-serif; cursor: pointer; margin-bottom: 44px;
+}
+.save-btn:active { opacity: .75; }
+.save-btn:disabled { background: #999; }
+
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: #1a1a1a; color: #fff; border-radius: 10px;
+  padding: 13px 22px; font-size: 13px; opacity: 0;
+  transition: all .3s; pointer-events: none; z-index: 999; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.sending-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.4); z-index: 998;
+  display: none; align-items: center; justify-content: center;
+}
+.sending-overlay.show { display: flex; }
+.sending-box {
+  background: var(--white); border-radius: var(--r);
+  padding: 24px 32px; text-align: center; font-size: 14px; font-weight: 500;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>シフト希望入力</h1>
+  <p id="hdr-sub">社員番号を入力してください</p>
+</header>
+
+<div class="screen active" id="screen-pin">
+  <div class="pin-screen">
+    <h2>社員番号を入力</h2>
+    <p>自分の社員番号を入力して<br>希望提出に進んでください</p>
+    <div class="month-wrap">
+      <label>対象月</label>
+      <input type="month" id="sel-month" />
+    </div>
+    <div class="pin-display" id="pin-disp"></div>
+    <div class="pin-grid">
+      <button class="pin-key" onclick="kp('1')">1</button>
+      <button class="pin-key" onclick="kp('2')">2</button>
+      <button class="pin-key" onclick="kp('3')">3</button>
+      <button class="pin-key" onclick="kp('4')">4</button>
+      <button class="pin-key" onclick="kp('5')">5</button>
+      <button class="pin-key" onclick="kp('6')">6</button>
+      <button class="pin-key" onclick="kp('7')">7</button>
+      <button class="pin-key" onclick="kp('8')">8</button>
+      <button class="pin-key" onclick="kp('9')">9</button>
+      <button class="pin-key blank"></button>
+      <button class="pin-key" onclick="kp('0')">0</button>
+      <button class="pin-key del" onclick="kd()">⌫</button>
+    </div>
+    <div class="pin-error" id="pin-err"></div>
+    <p class="pin-hint">入力が一致すると自動で画面が切り替わります</p>
+  </div>
+</div>
+
+<div class="screen" id="screen-cal">
+  <div class="cal-screen">
+    <div class="cal-header">
+      <button class="back-btn" onclick="goBack()">← 戻る</button>
+      <div>
+        <div class="cal-name" id="cal-name">─</div>
+        <div class="cal-sub" id="cal-sub">─</div>
+      </div>
+    </div>
+    <div class="legend">
+      <button class="s-btn se sel" onclick="ss('early',this)"><span class="sn">早番</span></button>
+      <button class="s-btn sm" onclick="ss('mid',this)"><span class="sn">中番</span></button>
+      <button class="s-btn sl" onclick="ss('late',this)"><span class="sn">遅番</span></button>
+      <button class="s-btn so" onclick="ss('off',this)"><span class="sn">希望休</span></button>
+      <button class="s-btn sp" onclick="ss('paid',this)"><span class="sn">有給</span></button>
+      <button class="s-btn sc" onclick="ss('none',this)"><span class="sn">クリア</span></button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="chips" id="chips"></div>
+    <div class="note-wrap">
+      <label>備考・メモ（任意）</label>
+      <textarea id="inp-note" placeholder="例：5日は16時以降のみ希望、など"></textarea>
+    </div>
+    <button class="save-btn" id="save-btn" onclick="saveData()">希望を送信する</button>
+  </div>
+</div>
+
+<div class="sending-overlay" id="sending-overlay">
+  <div class="sending-box">送信中です...<br>しばらくお待ちください</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzfQB_gjtjr5OaHa45baZ5hXbglLId-zpKuihB4PoBIfEK8rYxhjl6urLQJQ2DWYC29/exec';
+const STAFF_KEY = 'shift_v5_staff';
+const DEFAULT_STAFF = [
+  {name:'川島達也',  role:'SM', empNo:''},
+  {name:'石川竜也',  role:'AM', empNo:''},
+  {name:'蛭田辰徳',  role:'AM', empNo:''},
+  {name:'落合裕哉',  role:'AM', empNo:''},
+  {name:'結城耕司',  role:'AM', empNo:''},
+  {name:'羽入田弘希',role:'AM', empNo:''},
+  {name:'佐藤和幸',  role:'ST', empNo:''},
+  {name:'稲崎美香',  role:'ST', empNo:''},
+  {name:'滝沢智子',  role:'ST', empNo:''},
+  {name:'冨田一也',  role:'ST', empNo:'7051360'},
+  {name:'小林啓泰',  role:'ST', empNo:''},
+  {name:'石澤紫苑',  role:'ST', empNo:''},
+  {name:'高橋虎雅',  role:'ST', empNo:''},
+  {name:'冨田 幸子', role:'ST', empNo:'923'},
+  {name:'冨田 和',   role:'ST', empNo:'130'},
+  {name:'冨田 英',   role:'ST', empNo:'1029'},
+];
+
+const TL = {early:'早',mid:'中',late:'遅',off:'休',paid:'有給'};
+const TC = {early:'var(--early)',mid:'var(--mid)',late:'var(--late)',off:'var(--off)',paid:'var(--paid)'};
+const TB = {early:'var(--early-bg)',mid:'var(--mid-bg)',late:'var(--late-bg)',off:'var(--off-bg)',paid:'var(--paid-bg)'};
+
+let pin='', curStaff=null, curType='early', calData={};
+
+function getStaff(){
+  const s=localStorage.getItem(STAFF_KEY);
+  if(s){try{return JSON.parse(s);}catch(e){}}
+  localStorage.setItem(STAFF_KEY,JSON.stringify(DEFAULT_STAFF));
+  return DEFAULT_STAFF;
+}
+
+function toast(msg,duration=2400){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),duration);
+}
+
+function updDisp(){
+  const d=document.getElementById('pin-disp');
+  d.innerHTML='';
+  const len=Math.max(pin.length,1);
+  for(let i=0;i<len;i++){
+    const dot=document.createElement('div');
+    dot.className='pin-dot'+(i<pin.length?' filled':'');
+    d.appendChild(dot);
+  }
+}
+
+function kp(n){
+  if(pin.length>=10)return;
+  pin+=n;
+  document.getElementById('pin-err').textContent='';
+  updDisp();
+  const staff=getStaff();
+  const found=staff.find(s=>s.empNo&&s.empNo===pin);
+  if(found){setTimeout(()=>openCal(found),180);}
+}
+
+function kd(){
+  pin=pin.slice(0,-1);
+  document.getElementById('pin-err').textContent='';
+  updDisp();
+}
+
+function openCal(s){
+  const month=document.getElementById('sel-month').value;
+  if(!month){
+    document.getElementById('pin-err').textContent='先に対象月を選択してください';
+    pin='';updDisp();return;
+  }
+  curStaff=s; calData={};
+  document.getElementById('inp-note').value='';
+  const[y,m]=month.split('-').map(Number);
+  document.getElementById('cal-name').textContent=`${y}年${m}月`;
+  document.getElementById('cal-sub').textContent=`${s.name}（${s.role}）`;
+  document.getElementById('hdr-sub').textContent=`${s.name} / ${y}年${m}月`;
+  buildCal(y,m);
+  updChips();
+  document.getElementById('screen-pin').classList.remove('active');
+  document.getElementById('screen-cal').classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function goBack(){
+  pin='';updDisp();
+  document.getElementById('pin-err').textContent='';
+  document.getElementById('screen-cal').classList.remove('active');
+  document.getElementById('screen-pin').classList.add('active');
+  document.getElementById('hdr-sub').textContent='社員番号を入力してください';
+  window.scrollTo(0,0);
+}
+
+function ss(t,el){
+  curType=t;
+  document.querySelectorAll('.s-btn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function buildCal(y,m){
+  const g=document.getElementById('cal-grid');g.innerHTML='';
+  ['日','月','火','水','木','金','土'].forEach((d,i)=>{
+    const h=document.createElement('div');
+    h.className='dh'+(i===0?' sun':(i===6?' sat':''));
+    h.textContent=d;g.appendChild(h);
+  });
+  const first=new Date(y,m-1,1).getDay();
+  for(let i=0;i<first;i++){
+    const e=document.createElement('div');e.className='dc empty';g.appendChild(e);
+  }
+  const total=new Date(y,m,0).getDate();
+  for(let d=1;d<=total;d++){
+    const dow=new Date(y,m-1,d).getDay();
+    const c=document.createElement('div');
+    c.className='dc'+(dow===0?' sun':(dow===6?' sat':''));
+    c.dataset.day=d;
+    const t=calData[d];
+    if(t)c.setAttribute('data-t',t);
+    c.innerHTML=`<span class="dn">${d}</span><span class="dl" id="dl-${d}">${t?TL[t]:''}</span>`;
+    c.addEventListener('click',()=>tapDay(d,c));
+    g.appendChild(c);
+  }
+}
+
+function tapDay(d,cell){
+  if(curType==='none'){
+    delete calData[d];cell.removeAttribute('data-t');
+    const l=document.getElementById('dl-'+d);if(l)l.textContent='';
+  } else {
+    calData[d]=curType;cell.setAttribute('data-t',curType);
+    const l=document.getElementById('dl-'+d);if(l)l.textContent=TL[curType];
+  }
+  updChips();
+}
+
+function updChips(){
+  const cnt={};Object.values(calData).forEach(t=>{cnt[t]=(cnt[t]||0)+1;});
+  const el=document.getElementById('chips');el.innerHTML='';
+  ['early','mid','late','off','paid'].forEach(t=>{
+    if(!cnt[t])return;
+    const c=document.createElement('span');c.className='chip';
+    c.style.background=TB[t];c.style.color=TC[t];
+    c.textContent=`${TL[t]} ${cnt[t]}日`;
+    el.appendChild(c);
+  });
+}
+
+function saveData(){
+  const month=document.getElementById('sel-month').value;
+  const note=document.getElementById('inp-note').value.trim();
+  const btn=document.getElementById('save-btn');
+  const overlay=document.getElementById('sending-overlay');
+
+  btn.disabled=true;
+  overlay.classList.add('show');
+
+  const payload={
+    name:curStaff.name,
+    empNo:curStaff.empNo,
+    role:curStaff.role,
+    month:month,
+    note:note,
+    days:calData
+  };
+
+  fetch(GAS_URL, {
+    method:'POST',
+    mode:'no-cors',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  })
+  .then(()=>{
+    overlay.classList.remove('show');
+    btn.disabled=false;
+    toast('希望を送信しました！');
+    setTimeout(()=>goBack(),1200);
+  })
+  .catch(err=>{
+    overlay.classList.remove('show');
+    btn.disabled=false;
+    toast('送信に失敗しました。もう一度お試しください。',3000);
+  });
+}
+
+const today=new Date();
+document.getElementById('sel-month').value=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+updDisp();
+</script>
+</body>
+</html>
